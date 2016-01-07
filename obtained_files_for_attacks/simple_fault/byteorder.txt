@@ -1,0 +1,2 @@
+Bytes in the text file are in ascending order, i.e.,
+A0 A1 A2 ... A15
