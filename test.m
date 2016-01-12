@@ -13,9 +13,43 @@ load obtained_files_for_attacks/simple_fault/challenge.mat
 % repeat the steps 2, 3, 4; 10 times for the previous columns to get RK_i, ..., RK_10 which we will need to use then for reversing the actual
 % aes. So we get RK_10 which we have to XOR with faulty/right ciphertext and then reverse SR and SB, after which we should be able to see where
 % the bit flip happened
+% What just popped in my head is: we can basically guess the RK_10 right? And only if we guess it right, we will then reverse the steps and 
+% find out the Key
+
+guessed_key = zeros(1, 255);%declare an array for key guess
+for j = 1 : 255
+    guessed_key(j) = j; %fill it with num 1-255
+end
+
+guessed_key = dec2bin(guessed_key, 8);%converting to binary (8bits)
+
+for k = 1 : 255 
+    x = aes_ct(1, 1); %taking the first byte of the right ciphertext
+    x = dec2bin(x, 8)
+    x = (x - '0')
+    z = aes_ct_fault(1, 1); %taking the first byte of the wrong
+    z = dec2bin(z, 8)
+    z = (z - '0')
+
+    y = guessed_key(k, 1:8) 
+    y = (y - '0')
+    tmp_array(k, 1:8) = xor(x, y) %xoring all possible keys with the 1st byte of the right ciphertext
+    tmp_brray(k, 1:8) = xor(z, y) %xoring all -||- wrong ciphertext to see the differece
+end
+
+%6D for 1byte key=='00000001'
 
 % create sbox for subbytes
-sbox = {
+%00 0 1 2 3 4 5 . . A B C D
+%10
+%20
+%30
+%40
+%.
+%.
+%A0
+%B0  ]
+sbox = [
     '0x63', '0x7C', '0x77', '0x7B', '0xF2', '0x6B', '0x6F', '0xC5', '0x30', '0x01', '0x67', '0x2B', '0xFE', '0xD7', '0xAB', '0x76';
     '0xCA', '0x82', '0xC9', '0x7D', '0xFA', '0x59', '0x47', '0xF0', '0xAD', '0xD4', '0xA2', '0xAF', '0x9C', '0xA4', '0x72', '0xC0';
     '0xB7', '0xFD', '0x93', '0x26', '0x36', '0x3F', '0xF7', '0xCC', '0x34', '0xA5', '0xE5', '0xF1', '0x71', '0xD8', '0x31', '0x15';
@@ -32,12 +66,12 @@ sbox = {
     '0x70', '0x3E', '0xB5', '0x66', '0x48', '0x03', '0xF6', '0x0E', '0x61', '0x35', '0x57', '0xB9', '0x86', '0xC1', '0x1D', '0x9E';
     '0xE1', '0xF8', '0x98', '0x11', '0x69', '0xD9', '0x8E', '0x94', '0x9B', '0x1E', '0x87', '0xE9', '0xCE', '0x55', '0x28', '0xDF';
     '0x8C', '0xA1', '0x89', '0x0D', '0xBF', '0xE6', '0x42', '0x68', '0x41', '0x99', '0x2D', '0x0F', '0xB0', '0x54', '0xBB', '0x16'
- };
+ ];
 
 % create rcon for AddRoundKey opeartion; needed only rcon(1) - rcon(11) for 128 AES; rcon(1) - 0x8d not used.. start from rcon(2)
-rcon = {
+rcon = [
     '0x8d', '0x01', '0x02', '0x04', '0x08', '0x10', '0x20', '0x40', '0x80', '0x1b', '0x36'
-};
+];
 
 % rcon = {
 %     '0x8d', '0x01', '0x02', '0x04', '0x08', '0x10', '0x20', '0x40', '0x80', '0x1b', '0x36', '0x6c', '0xd8', '0xab', '0x4d', '0x9a'; 
