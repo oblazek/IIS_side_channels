@@ -4,51 +4,8 @@ clear
  % first load the ciphertexts and plaintext through this file..
 load obtained_files_for_attacks/simple_fault/challenge.mat
 
-% What I've figured out so far for the simple fault attack: 
-% 1) we need to guess the key used for encryption, right?.. so we will generate that
-% 2) do a rotation
-% 3) do a subbytes operation using sbox for the first column
-% 4) XOR the first column with output of 3rd step and XOR it with rcon(2)
-% 
-% repeat the steps 2, 3, 4; 10 times for the previous columns to get RK_i, ..., RK_10 which we will need to use then for reversing the actual
-% aes. So we get RK_10 which we have to XOR with faulty/right ciphertext and then reverse SR and SB, after which we should be able to see where
-% the bit flip happened
-% What just popped in my head is: we can basically guess the RK_10 right? And only if we guess it right, we will then reverse the steps and 
-% find out the Key
-
-guessed_key = zeros(1, 255);%declare an array for key guess
-for j = 1 : 255
-    guessed_key(j) = j; %fill it with num 1-255
-end
-
-guessed_key = dec2bin(guessed_key, 8);%converting to binary (8bits)
-
-for k = 1 : 255 
-    x = aes_ct(1, 1); %taking the first byte of the right ciphertext
-    x = dec2bin(x, 8)
-    x = (x - '0')
-    z = aes_ct_fault(1, 1); %taking the first byte of the wrong
-    z = dec2bin(z, 8)
-    z = (z - '0')
-
-    y = guessed_key(k, 1:8) 
-    y = (y - '0')
-    tmp_array(k, 1:8) = xor(x, y) %xoring all possible keys with the 1st byte of the right ciphertext
-    tmp_brray(k, 1:8) = xor(z, y) %xoring all -||- wrong ciphertext to see the differece
-end
-
-%6D for 1byte key=='00000001'
-
-% create sbox for subbytes
-%00 0 1 2 3 4 5 . . A B C D
-%10
-%20
-%30
-%40
-%.
-%.
-%A0
-%B0  ]
+%sbox() ----- max.: sbox(16, 63:64)
+%      0 3:4;  1 7:8   2 11:12 3      4       5        6       7
 sbox = [
     '0x63', '0x7C', '0x77', '0x7B', '0xF2', '0x6B', '0x6F', '0xC5', '0x30', '0x01', '0x67', '0x2B', '0xFE', '0xD7', '0xAB', '0x76';
     '0xCA', '0x82', '0xC9', '0x7D', '0xFA', '0x59', '0x47', '0xF0', '0xAD', '0xD4', '0xA2', '0xAF', '0x9C', '0xA4', '0x72', '0xC0';
@@ -67,6 +24,61 @@ sbox = [
     '0xE1', '0xF8', '0x98', '0x11', '0x69', '0xD9', '0x8E', '0x94', '0x9B', '0x1E', '0x87', '0xE9', '0xCE', '0x55', '0x28', '0xDF';
     '0x8C', '0xA1', '0x89', '0x0D', '0xBF', '0xE6', '0x42', '0x68', '0x41', '0x99', '0x2D', '0x0F', '0xB0', '0x54', '0xBB', '0x16'
  ];
+
+% What I've figured out so far for the simple fault attack: 
+% all that shit I thought before were wrong :D 
+
+% I know now that we have the ciphertext C' which is output of 9 AES rounds and by the round reduction fault it skips the last operations
+% so I can just do a SB and SR for the C' as input and the test all possible RK_10 keys with one byte after another and XOR them together
+
+function [SbOutput] = SB(state, sbox)
+    for i = 1 : 16
+        a = state(1, i);
+        a = dec2hex(a);
+        %brray(i, 1:2) = a; %the values of single bytes before subbytes operation
+        if (a == 'A' || a == 'B' || a == 'C' || a == 'D' || a == 'E' || a == 'F' || a == '1' || a == '2' || a == '3' || a == '4'|| a == '5' || a == '6'|| a == '7' || a == '8' || a == '9')
+            %disp('pozor')
+            if a == '0'
+                tmp1 = '0';
+                tmp2 = '0';
+            else
+                tmp1 = a;
+                tmp2 = '0';
+            end
+        else
+            tmp1 = a(1);
+            tmp2 = a(2);
+        end %end of if (a == 'A' .....)
+        tmp1 = hex2dec(tmp1);
+        tmp2 = hex2dec(tmp2);
+        for b = 0 : 15
+            index = 3;
+            for c = 0 : 15
+                if (b == tmp1 && c == tmp2)
+                    helperArray(i, 1:2) = sbox(b+1, index:(index+1)); %values of first 16bytes after subbytes
+                    SbOutput(i) = hex2dec(helperArray(i, 1:2));
+                    %array(i) = u;
+                end
+                index += 4;   
+            end
+        end %end of for b = 0 : 15
+    end %end of for i = 1 : 16
+end %end of SB function
+
+function [SrOutput] = SR(SbOutput)
+    SbOutput = reshape(SbOutput, 4,4);
+    SrOutput = reshape (SbOutput([1 6 11 16 5 10 15 4 9 14 3 8 13 2 7 12]), 4,4);
+end %end of SR function
+
+SbOutput = SB(aes_ct_fault ,sbox);
+SrOutput = SR(SbOutput);
+
+
+% guessed_key = zeros(1, 255);%declare an array for key guess
+% for j = 1 : 255
+%     guessed_key(j) = j; %fill it with num 1-255
+% end
+% guessed_key = dec2bin(guessed_key, 8);%converting to binary (8bits)
 
 % create rcon for AddRoundKey opeartion; needed only rcon(1) - rcon(11) for 128 AES; rcon(1) - 0x8d not used.. start from rcon(2)
 rcon = [
@@ -92,6 +104,3 @@ rcon = [
 %     '0x61', '0xc2', '0x9f', '0x25', '0x4a', '0x94', '0x33', '0x66', '0xcc', '0x83', '0x1d', '0x3a', '0x74', '0xe8', '0xcb', '0x8d'
 % };
 
-% function aes
-% 	disp('This program doesn''t do anything YET.. but wait for it.')
-% end
