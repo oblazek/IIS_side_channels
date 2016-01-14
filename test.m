@@ -70,15 +70,42 @@ function [SrOutput] = SR(SbOutput)
     SrOutput = reshape (SbOutput([1 6 11 16 5 10 15 4 9 14 3 8 13 2 7 12]), 4,4); %for left rotation
 end %end of SR function
 
+function [guessed_key] = ARKey(SrOutput, ciphertext)
+    for i = 1 : 16
+        tmp = dec2bin(SrOutput(i), 8);
+        tmp = tmp - '0';
+
+        for j = 1 : 255
+            tmp1 = j; %fill it with num 1-255
+            tmp1 = dec2bin(tmp1, 8);
+            tmp1 = tmp1 - '0';
+            guessed_key(j, 1:8) = tmp1;
+            %key_bin(j, 1:8) = key_bin(j, 1:8) - '0';
+        end
+        for k = 1 : 255
+            tmp2 = xor(tmp, guessed_key(k, 1:8));
+            tmp2 = num2str(tmp2);
+            tmp2 = bin2dec(tmp2);
+            if ciphertext(1,i) == tmp2
+                tmp3 = guessed_key(k, 1:8);
+                tmp3 = num2str(tmp3);
+                tmp3 = bin2dec(tmp3);
+                disp('You''ve got it'), disp(tmp3)
+            end
+            
+        end
+        %guessed_key = dec2bin(guessed_key, 8);%converting to binary (8bits)
+        %ARKOutput(i, 1:8) = tmp;
+    end
+
+end
+
 SbOutput = SB(aes_ct_fault ,sbox);
 SrOutput = SR(SbOutput);
+ARKOutput = ARKey(SrOutput, aes_ct);
 
 
-% guessed_key = zeros(1, 255);%declare an array for key guess
-% for j = 1 : 255
-%     guessed_key(j) = j; %fill it with num 1-255
-% end
-% guessed_key = dec2bin(guessed_key, 8);%converting to binary (8bits)
+
 
 % create rcon for AddRoundKey opeartion; needed only rcon(1) - rcon(11) for 128 AES; rcon(1) - 0x8d not used.. start from rcon(2)
 rcon = [
