@@ -33,9 +33,9 @@ sbox = [
 
 function [SbOutput] = SB(state, sbox)
     for i = 1 : 16
-        a = state(1, i);
+        a = state(1, i); %we are taking only the first 16B from the aes blocks.. there are 9 more.. 
         a = dec2hex(a);
-        %brray(i, 1:2) = a; %the values of single bytes before subbytes operation
+        
         if (a == 'A' || a == 'B' || a == 'C' || a == 'D' || a == 'E' || a == 'F' || a == '1' || a == '2' || a == '3' || a == '4'|| a == '5' || a == '6'|| a == '7' || a == '8' || a == '9')
             %disp('pozor')
             if a == '0'
@@ -55,10 +55,10 @@ function [SbOutput] = SB(state, sbox)
             index = 3;
             for c = 0 : 15
                 if (b == tmp1 && c == tmp2)
-                    helperArray(i, 1:2) = sbox(b+1, index:(index+1)); %values of first 16bytes after subbytes
-                    SbOutput(i) = hex2dec(helperArray(i, 1:2));
-                    %array(i) = u;
-                end
+                    helperArray(i, 1:2) = sbox(b+1, index:(index+1));   %the actual going through sbox and taking out the right value y axis (b), x axis (c)
+                    SbOutput(i) = hex2dec(helperArray(i, 1:2));         %converting back to dec, impossible to store strings together and be able to 
+                                                                        %access them using indexes.. like: helperArray(i) and get 'FF' -- matlab.. xD
+                end                                                     %even javascript can do that shit :D
                 index += 4;   
             end
         end %end of for b = 0 : 15
@@ -67,7 +67,7 @@ end %end of SB function
 
 function [SrOutput] = SR(SbOutput)
     SbOutput = reshape(SbOutput, 4,4);
-    SrOutput = reshape (SbOutput([1 6 11 16 5 10 15 4 9 14 3 8 13 2 7 12]), 4,4);
+    SrOutput = reshape (SbOutput([1 6 11 16 5 10 15 4 9 14 3 8 13 2 7 12]), 4,4); %for left rotation
 end %end of SR function
 
 SbOutput = SB(aes_ct_fault ,sbox);
