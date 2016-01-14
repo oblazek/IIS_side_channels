@@ -70,8 +70,9 @@ function [SrOutput] = SR(SbOutput)
     SrOutput = reshape (SbOutput([1 6 11 16 5 10 15 4 9 14 3 8 13 2 7 12]), 4,4); %for left rotation
 end %end of SR function
 
-function [guessed_key] = ARKey(SrOutput, ciphertext)
+function ARKey(SrOutput, ciphertext)
     for i = 1 : 16
+
         tmp = dec2bin(SrOutput(i), 8);
         tmp = tmp - '0';
 
@@ -94,15 +95,22 @@ function [guessed_key] = ARKey(SrOutput, ciphertext)
             end
             
         end
-        %guessed_key = dec2bin(guessed_key, 8);%converting to binary (8bits)
-        %ARKOutput(i, 1:8) = tmp;
+        
+        % righttmp = dec2bin(ciphertext(1, i), 8);
+        % righttmp = righttmp - '0';
+        
+        % tmp2 = xor(tmp, righttmp);
+        % tmp2 = num2str(tmp2);
+        % tmp2 = bin2dec(tmp2);
+        % disp(tmp2)
+        
     end
 
 end
 
 SbOutput = SB(aes_ct_fault ,sbox);
 SrOutput = SR(SbOutput);
-ARKOutput = ARKey(SrOutput, aes_ct);
+ARKey(SrOutput, aes_ct);
 
 
 
