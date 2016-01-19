@@ -33,31 +33,41 @@ function [SbOutput] = SubBytes(state, lengthOfBytes)
     ];
 
     for i = 1 : lengthOfBytes
-        a = state(1, i); %we are taking only the first 16B from the aes blocks.. there are 9 more.. 
+
+        a = state(1, i); %we are taking only the first 16B from the aes blocks.. there are 9 more..  
+        %disp('a: '), a
         a = dec2hex(a);
-        
-        if (a == 'A' || a == 'B' || a == 'C' || a == 'D' || a == 'E' || a == 'F' || a == '1' || a == '2' || a == '3' || a == '4'|| a == '5' || a == '6'|| a == '7' || a == '8' || a == '9')
-            %disp('pozor')
-            if a == '0'
-                tmp1 = '0';
-                tmp2 = '0';
-            else
-                tmp1 = a;
-                tmp2 = '0';
+
+        if (length(a) == 1)
+            if (a == 'A' || a == 'B' || a == 'C' || a == 'D' || a == 'E' || a == 'F' || a == '0' || a == '1' || a == '2' || a == '3' || a == '4'|| a == '5' || a == '6'|| a == '7' || a == '8' || a == '9')
+                %disp('pozor')
+                if a == '0'
+                    %disp('Achtung')
+                    tmp1 = '0';
+                    tmp2 = '0';
+                else
+                    %disp('jednomistnny')
+                    tmp1 = a(1); %chybaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                    tmp2 = '0';
+
+                end
             end
         else
             tmp1 = a(1);
             tmp2 = a(2);
         end %end of if (a == 'A' .....)
+        %disp(': '), tmp1
+        %disp(': '), tmp2
         tmp1 = hex2dec(tmp1);
         tmp2 = hex2dec(tmp2);
+
         for b = 0 : 15
             index = 3;
             for c = 0 : 15
                 if (b == tmp1 && c == tmp2)
                     helperArray(i, 1:2) = sbox(b+1, index:(index+1));   %the actual going through sbox and taking out the right value y axis (b), x axis (c)
                     SbOutput(i) = hex2dec(helperArray(i, 1:2));         %converting back to dec, impossible to store strings together and be able to 
-                                                                        %access them using indexes.. like: helperArray(i) and get 'FF' -- matlab.. xD
+                    %SbOutput(i)                                                    %access them using indexes.. like: helperArray(i) and get 'FF' -- matlab.. xD
                 end                                                     %even javascript can do that shit :D
                 index += 4;   
             end
@@ -66,8 +76,10 @@ function [SbOutput] = SubBytes(state, lengthOfBytes)
 end %end of SB function
 
 function [SrOutput] = ShiftRows(SbOutput)
+    
     SbOutput = reshape(SbOutput, 4,4);
     SrOutput = reshape (SbOutput([1 6 11 16 5 10 15 4 9 14 3 8 13 2 7 12]), 4,4); %for left rotation
+    
 end %end of SR function
 
 function [RoundKey10] = AddAndGuessKey(SrOutput, ciphertext)
@@ -192,6 +204,51 @@ function [RK] = inverseKeySchedule(RoundKey, rcon_sizes)
     RK(1:4,1) = result4;
 end
 
+function [out] = Multiplication(tmp1, tmp2)
+    out = 0;
+    for i = 1 : 8
+        if(rem(tmp2, 2))
+            out = bitxor(out, tmp1);
+            tmp2 = (tmp2 - 1)/2;
+        else
+            tmp2 = tmp2/2;
+        end
+        tmp1 = 2*tmp1;
+        if(tmp1 > 255)
+            tmp1 = bitxor(tmp1, 283);
+        end
+    end
+end
+
+% function [log_table, inverse_log_table] = LogTables()
+%     log_table = zeros(1,256);
+%     inverse_log_table = zeros(1,256);
+%     tmp = 1;
+%     for i = 0:255
+%         log_table(tmp + 1) = i;
+%         inverse_log_table(i + 1) = tmp;
+%         tmp = Multiplication(tmp, 3);
+%     end
+% end
+
+function [McOutput] = MixColumns(state)
+   McOutput = zeros(size(state));
+   for column = 1 : 4
+        tmp = bitxor(state(3, column), state(4, column));
+        tmp = bitxor(tmp, Multiplication(2, state(1, column)));
+        McOutput(1, column) = bitxor(tmp, Multiplication(3, state(2, column)));
+        tmp = bitxor(state(1,column),state(4,column));
+        tmp = bitxor(tmp, Multiplication(2,state(2,column)));
+        McOutput(2,column) = bitxor(tmp, Multiplication(3,state(3,column)));
+        tmp = bitxor(state(1,column),state(2,column));
+        tmp = bitxor(tmp, Multiplication(2,state(3,column)));
+        McOutput(3,column) = bitxor(tmp, Multiplication(3,state(4,column)));
+        tmp = bitxor(state(2,column),state(3,column));
+        tmp = bitxor(tmp, Multiplication(3,state(1,column)));
+        McOutput(4,column) = bitxor(tmp, Multiplication(2,state(4,column)));
+   end 
+end
+
 RoundKey10 = ([77 114 22 32 94 37 228 174 224 195 201 55 250 38 199 160]);
 RoundKey10 = reshape(RoundKey10, 4, 4);
 
@@ -204,6 +261,58 @@ RoundKey4 = inverseKeySchedule(RoundKey5, 4);
 RoundKey3 = inverseKeySchedule(RoundKey4, 3);
 RoundKey2 = inverseKeySchedule(RoundKey3, 2);
 RoundKey1 = inverseKeySchedule(RoundKey2, 1);
+
+
+state = aes_pt(1,1:16);
+state = reshape(state, 4,4);
+state = bitxor(state, RoundKey1);
+state = reshape(state, 1, 16);
+%start of 9 rounds
+for i = 1 : 9
+    % disp('Kolo: '), disp(i)
+    % state
+    state = reshape(state, 1, 16);
+    %state
+    switch i
+        case 1
+            RK = RoundKey2;
+        case 2
+            RK = RoundKey3;
+        case 3
+            RK = RoundKey4;
+        case 4
+            RK = RoundKey5;
+        case 5
+            RK = RoundKey6;
+        case 6
+            RK = RoundKey7;
+        case 7
+            RK = RoundKey8;
+        case 8
+            RK = RoundKey9;
+        case 9
+            RK = RoundKey10;
+        otherwise
+            break;
+    end
+    %disp('before'), state
+    state = SubBytes(state, 16);
+    state = ShiftRows(state);
+    
+    %state
+    if(i == 9)
+         %state = MixColumns(state);
+         disp('Last round, RK: '), RK
+         state = bitxor(state, RK);
+         disp('Your ciphertext: '), state
+    else
+         state = MixColumns(state);
+         state = bitxor(state, RK);
+    end
+
+end
+
+%state = MixColumns(state);
 
 % rcon = {
 %     '0x8d', '0x01', '0x02', '0x04', '0x08', '0x10', '0x20', '0x40', '0x80', '0x1b', '0x36', '0x6c', '0xd8', '0xab', '0x4d', '0x9a'; 
