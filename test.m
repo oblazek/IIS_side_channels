@@ -40,14 +40,14 @@ function [SbOutput] = SubBytes(state, lengthOfBytes)
 
         if (length(a) == 1)
             if (a == 'A' || a == 'B' || a == 'C' || a == 'D' || a == 'E' || a == 'F' || a == '0' || a == '1' || a == '2' || a == '3' || a == '4'|| a == '5' || a == '6'|| a == '7' || a == '8' || a == '9')
-                %disp('pozor')
+                
                 if a == '0'
-                    %disp('Achtung')
+                    
                     tmp1 = '0';
                     tmp2 = '0';
                 else
-                    %disp('jednomistnny')
-                    tmp1 = a(1); %chybaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                    
+                    tmp1 = a(1); 
                     tmp2 = '0';
 
                 end
@@ -151,6 +151,9 @@ function [RK] = inverseKeySchedule(RoundKey, rcon_sizes)
         case 1
             rcon_from = 11;
             rcon_to = 12;
+        case 0
+            rcon_from = 7;
+            rcon_to = 8;
         otherwise
             
     end
@@ -169,15 +172,15 @@ function [RK] = inverseKeySchedule(RoundKey, rcon_sizes)
     tmp3 = dec2bin(tmp3, 8);
     tmp3 = tmp3 - '0';
 
-    result = xor(tmp, tmp1);
+    result = bitxor(tmp, tmp1);
     result = num2str(result);
     result = bin2dec(result);
     RK(1:4,4) = result;
-    result1 = xor(tmp1, tmp2);
+    result1 = bitxor(tmp1, tmp2);
     result1 = num2str(result1);
     result1 = bin2dec(result1);
     RK(1:4,3) = result1;
-    result2 = xor(tmp2, tmp3);
+    result2 = bitxor(tmp2, tmp3);
     result2 = num2str(result2);
     result2 = bin2dec(result2);
     RK(1:4,2) = result2;
@@ -186,20 +189,22 @@ function [RK] = inverseKeySchedule(RoundKey, rcon_sizes)
     rcon_value = hex2dec(rcon_value);
     rcon_value = dec2bin(rcon_value, 8);
     rcon_value = rcon_value - '0';
-    %disp(tmp3(1,1:8)), disp(''), disp(rcon_value), disp(''), disp(tmp)
-    % %xor(tmp3(1,1:8), rcon_value)
-
-    result = reshape(result([4 1 2 3]), 1,4);
+    
+    result = reshape(result([2 3 4 1]), 1,4);
     result = SubBytes(result, 4);
     result = dec2bin(result, 8);
     result = result - '0';
-
-    result3(1, 1:8) = xor(result(1,1:8), rcon_value);
+    
+    % result(1, 1:8)
+    % result(2, 1:8)
+    % result(3, 1:8)
+    % result(4, 1:8)
+    result3(1, 1:8) = bitxor(result(1,1:8), rcon_value);
     result3(2, 1:8) = result(2, 1:8);
     result3(3, 1:8) = result(3, 1:8);
     result3(4, 1:8) = result(4, 1:8);
-    result4 = xor(result3, tmp3);
-    result4 = num2str(result4);
+    result4 = bitxor(result3, tmp3);
+    result4 = num2str(result4); 
     result4 = bin2dec(result4);
     RK(1:4,1) = result4;
 end
@@ -249,6 +254,80 @@ function [McOutput] = MixColumns(state)
    end 
 end
 
+function [d] = RKTest(RK1, rcon_size)
+    rcon = [
+        '0x8d', '0x01', '0x02', '0x04', '0x08', '0x10', '0x20', '0x40', '0x80', '0x1b', '0x36'
+    ];
+    switch rcon_size
+        case 9
+            rcon_from = 43;
+            rcon_to = 44;
+        case 8
+            rcon_from = 39;
+            rcon_to = 40;
+        case 7
+            rcon_from = 35;
+            rcon_to = 36;
+        case 6
+            rcon_from = 31;
+            rcon_to = 32;
+        case 5
+            rcon_from = 27;
+            rcon_to = 28;
+        case 4
+            rcon_from = 23;
+            rcon_to = 24;
+        case 3
+            rcon_from = 19;
+            rcon_to = 20;
+        case 2
+            rcon_from = 15;
+            rcon_to = 16;
+        case 1
+            rcon_from = 11;
+            rcon_to = 12;
+        case 0
+            rcon_from = 7;
+            rcon_to = 8;
+        otherwise
+            
+    end
+
+    a = RK1(1:4);
+    b = RK1(13:16);
+    b = reshape(b([2 3 4 1]), 1,4);
+    b = SubBytes(b, 4);
+    c = bitxor(a, b);
+    rcon_value = rcon([rcon_from:rcon_to]);
+    rcon_value = hex2dec(rcon_value);
+    % rcon_value = dec2bin(rcon_value, 8);
+    % rcon_value = rcon_value - '0';
+    d(1) = bitxor(c(1), rcon_value);
+    d(2) = c(2);
+    d(3) = c(3);
+    d(4) = c(4);
+    
+    e = RK1(5:8);
+    f = bitxor(d,e);
+    d(5) = f(1);
+    d(6) = f(2);
+    d(7) = f(3);
+    d(8) = f(4);
+    e = RK1(9:12);
+    f = bitxor(f,e);
+    d(9) = f(1);
+    d(10) = f(2);
+    d(11) = f(3);
+    d(12) = f(4);
+    e = RK1(13:16);
+    f = bitxor(f,e);
+    d(13) = f(1);
+    d(14) = f(2);
+    d(15) = f(3);
+    d(16) = f(4);
+    d = reshape(d, 4, 4);
+end
+
 RoundKey10 = ([77 114 22 32 94 37 228 174 224 195 201 55 250 38 199 160]);
 RoundKey10 = reshape(RoundKey10, 4, 4);
 
@@ -261,36 +340,38 @@ RoundKey4 = inverseKeySchedule(RoundKey5, 4);
 RoundKey3 = inverseKeySchedule(RoundKey4, 3);
 RoundKey2 = inverseKeySchedule(RoundKey3, 2);
 RoundKey1 = inverseKeySchedule(RoundKey2, 1);
+InitialKey = inverseKeySchedule(RoundKey1, 0);
 
-
-state = aes_pt(1,1:16);
+%RK1 = RKTest(InitialKey, 0);
+state = aes_pt(2,1:16);
 state = reshape(state, 4,4);
-state = bitxor(state, RoundKey1);
+state = bitxor(state, InitialKey);
 state = reshape(state, 1, 16);
 %start of 9 rounds
-for i = 1 : 9
-    % disp('Kolo: '), disp(i)
-    % state
+for i = 1 : 10
+    
     state = reshape(state, 1, 16);
     %state
     switch i
         case 1
-            RK = RoundKey2;
+            RK = RoundKey1;
         case 2
-            RK = RoundKey3;
+            RK = RoundKey2;
         case 3
-            RK = RoundKey4;
+            RK = RoundKey3;
         case 4
-            RK = RoundKey5;
+            RK = RoundKey4;
         case 5
-            RK = RoundKey6;
+            RK = RoundKey5;
         case 6
-            RK = RoundKey7;
+            RK = RoundKey6;
         case 7
-            RK = RoundKey8;
+            RK = RoundKey7;
         case 8
-            RK = RoundKey9;
+            RK = RoundKey8;
         case 9
+            RK = RoundKey9;
+        case 10
             RK = RoundKey10;
         otherwise
             break;
@@ -300,7 +381,7 @@ for i = 1 : 9
     state = ShiftRows(state);
     
     %state
-    if(i == 9)
+    if(i == 10)
          %state = MixColumns(state);
          disp('Last round, RK: '), RK
          state = bitxor(state, RK);
