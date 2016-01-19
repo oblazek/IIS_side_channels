@@ -225,17 +225,6 @@ function [out] = Multiplication(tmp1, tmp2)
     end
 end
 
-% function [log_table, inverse_log_table] = LogTables()
-%     log_table = zeros(1,256);
-%     inverse_log_table = zeros(1,256);
-%     tmp = 1;
-%     for i = 0:255
-%         log_table(tmp + 1) = i;
-%         inverse_log_table(i + 1) = tmp;
-%         tmp = Multiplication(tmp, 3);
-%     end
-% end
-
 function [McOutput] = MixColumns(state)
    McOutput = zeros(size(state));
    for column = 1 : 4
