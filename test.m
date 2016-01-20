@@ -82,31 +82,100 @@ function [SrOutput] = ShiftRows(SbOutput)
     
 end %end of SR function
 
-function [RoundKey10] = AddAndGuessKey(SrOutput, ciphertext)
-    for i = 1 : 16
+function [RoundKey10] = AddAndGuessKey(cipher_faulty, ciphertext)
+    for i = 1 : 255
+        guessed_key(i) = i;
+    end
+    tmp4 = zeros(16);
+    tmp5 = zeros(16);
+    tmp6 = zeros(16);
+    tmp7 = zeros(16);
+    tmp8 = zeros(16);
+    %for k = 1 : 10
+    %nacist vsech 10x 16B 
+        for m = 1 : 10
+            for j = 1 : 255
+                tmp(1,1:16) = ciphertext(m,1:16);
+                tmp1 = bitxor(tmp, guessed_key(j));
+                tmp2 = reshape(tmp1([1 14 11 8 5 2 15 12 9 6 3 16 13 10 7 4]),  4,4);
+                tmp2 = reshape(tmp2, 1, 16);
+                tmp2 = SubBytes(tmp2, 16);
+                %tmp2 = reshape(tmp2, 4,4);
+                tmp3(j,1:16) = tmp2(1,1:16);
+            end
+            
+            t = cipher_faulty(m,1:16);
+        
+            for k = 1 : 255
+                if (tmp3(k,1) == t(1,1))
+                    key(m) = guessed_key(k);
+                end
+            end
+            
+            % p = 0;
+            % while p < 11
+            %     disp(key(p))
+            %     p+=1;
+            % end
+        end
+        key
+    % for i = 1 : 10
+    %     %NOT CORRECT --- just for comparing -- RoundKey10 = ([77 114 22 32 94 37 228 174 224 195 201 55 250 38 199 160]);
+        
+    %     %tmp = dec2bin(SrOutput(i), 8);
+    %     %tmp = tmp - '0';       
+    %     tmp1(1,1:16) = cipher_faulty(i,1:16);
+    %     tmp2(i,1:16) = ciphertext(i,1:16);
 
-        tmp = dec2bin(SrOutput(i), 8);
-        tmp = tmp - '0';
+    %     tmp1(1,1:16) = SubBytes(tmp1(1,1:16), 16);
+    %     tmp3 = ShiftRows(tmp1(1,1:16));
+    %     switch (i)
+    %         case 1
+    %             for j = 1 : 255
+    %                 tmp4(j) = bitxor(tmp3(1), guessed_key(j));
+    %             end    
+    %         case 2   
+    %             for j = 1 : 255
+    %                 tmp5(j) = bitxor(tmp3(1), guessed_key(j));
+    %             end    
+    %         case 3    
+    %             for j = 1 : 255
+    %                 tmp6(j) = bitxor(tmp3(1), guessed_key(j));
+    %             end
+    %         otherwise
+    %     end
+    % end
+    %     %disp('tmp1(1)'), tmp1(1), disp('\n')
+    %     %tmp2(i, 1:16) = reshape(tmp2, 4,4);
+    
+    %     for k = 1 : 255
+    %         if(tmp4(k) == ciphertext(2,1))% && tmp5(k) == tmp2(2,1) && tmp6(k) == tmp2(3,1))
+    %             disp('GJ'), guessed_key(k)
+    %         end
+    %     end
+    
+        %tmp = SrOutput(i,1)
 
-        for j = 1 : 255
-            tmp1 = j; %fill it with num 1-255
-            tmp1 = dec2bin(tmp1, 8);
-            tmp1 = tmp1 - '0';
-            guessed_key(j, 1:8) = tmp1;
+        % for j = 1 : 255
+        %     tmp1 = j; %fill it with num 1-255
+            % tmp1 = dec2bin(tmp1, 8);
+            % tmp1 = tmp1 - '0';
+            % guessed_key(j, 1:8) = tmp1;
             %key_bin(j, 1:8) = key_bin(j, 1:8) - '0';
-        end
-        for k = 1 : 255
-            tmp2 = xor(tmp, guessed_key(k, 1:8));
-            tmp2 = num2str(tmp2);
-            tmp2 = bin2dec(tmp2);
-            if ciphertext(1,i) == tmp2
-                tmp3 = guessed_key(k, 1:8);
-                tmp3 = num2str(tmp3);
-                tmp3 = bin2dec(tmp3);
-                RoundKey10(i) = tmp3;
-                %disp('You''ve got it'), disp(tmp3)
-            end 
-        end
+        % %end
+        %     for k = 1 : 255
+        %     tmp2 = xor(tmp, guessed_key(k, 1:8));
+        %     tmp2 = num2str(tmp2);
+        %     tmp2 = bin2dec(tmp2);
+        %         if ciphertext(2,i) == tmp2
+        %             tmp3 = guessed_key(k, 1:8);
+        %             tmp3 = num2str(tmp3);
+        %             tmp3 = bin2dec(tmp3);
+        %             RoundKey10(i) = tmp3;
+        %             disp('You''ve got it'), disp(tmp3)
+        %         end 
+        %     end
+        %end
         % righttmp = dec2bin(ciphertext(1, i), 8);
         % righttmp = righttmp - '0';
         
@@ -114,7 +183,6 @@ function [RoundKey10] = AddAndGuessKey(SrOutput, ciphertext)
         % tmp2 = num2str(tmp2);
         % tmp2 = bin2dec(tmp2);
         % disp(tmp2)   
-    end
 end %end of ARKey
 
 function [RK] = inverseKeySchedule(RoundKey, rcon_sizes)
@@ -317,70 +385,74 @@ function [d] = RKTest(RK1, rcon_size)
     d = reshape(d, 4, 4);
 end
 
-RoundKey10 = ([77 114 22 32 94 37 228 174 224 195 201 55 250 38 199 160]);
-RoundKey10 = reshape(RoundKey10, 4, 4);
+% out = aes_ct_fault(2,1:16);
+% out = SubBytes(out, 16);
+%out = ShiftRows(out);
+RK10 = AddAndGuessKey(aes_ct_fault, aes_ct);
+%RoundKey10 = ([77 114 22 32 94 37 228 174 224 195 201 55 250 38 199 160]);
+%RoundKey10 = reshape(RoundKey10, 4, 4);
 
-RoundKey9 = inverseKeySchedule(RoundKey10, 9);
-RoundKey8 = inverseKeySchedule(RoundKey9, 8);
-RoundKey7 = inverseKeySchedule(RoundKey8, 7);
-RoundKey6 = inverseKeySchedule(RoundKey7, 6);
-RoundKey5 = inverseKeySchedule(RoundKey6, 5);
-RoundKey4 = inverseKeySchedule(RoundKey5, 4);
-RoundKey3 = inverseKeySchedule(RoundKey4, 3);
-RoundKey2 = inverseKeySchedule(RoundKey3, 2);
-RoundKey1 = inverseKeySchedule(RoundKey2, 1);
-InitialKey = inverseKeySchedule(RoundKey1, 0);
+% RoundKey9 = inverseKeySchedule(RoundKey10, 9);
+% RoundKey8 = inverseKeySchedule(RoundKey9, 8);
+% RoundKey7 = inverseKeySchedule(RoundKey8, 7);
+% RoundKey6 = inverseKeySchedule(RoundKey7, 6);
+% RoundKey5 = inverseKeySchedule(RoundKey6, 5);
+% RoundKey4 = inverseKeySchedule(RoundKey5, 4);
+% RoundKey3 = inverseKeySchedule(RoundKey4, 3);
+% RoundKey2 = inverseKeySchedule(RoundKey3, 2);
+% RoundKey1 = inverseKeySchedule(RoundKey2, 1);
+% InitialKey = inverseKeySchedule(RoundKey1, 0);
 
-%RK1 = RKTest(InitialKey, 0);
-state = aes_pt(2,1:16);
-state = reshape(state, 4,4);
-state = bitxor(state, InitialKey);
-state = reshape(state, 1, 16);
-%start of 9 rounds
-for i = 1 : 10
+% %RK1 = RKTest(InitialKey, 0);
+% state = aes_pt(2,1:16);
+% state = reshape(state, 4,4);
+% state = bitxor(state, InitialKey);
+% state = reshape(state, 1, 16);
+% %start of 9 rounds
+% for i = 1 : 10
     
-    state = reshape(state, 1, 16);
-    %state
-    switch i
-        case 1
-            RK = RoundKey1;
-        case 2
-            RK = RoundKey2;
-        case 3
-            RK = RoundKey3;
-        case 4
-            RK = RoundKey4;
-        case 5
-            RK = RoundKey5;
-        case 6
-            RK = RoundKey6;
-        case 7
-            RK = RoundKey7;
-        case 8
-            RK = RoundKey8;
-        case 9
-            RK = RoundKey9;
-        case 10
-            RK = RoundKey10;
-        otherwise
-            break;
-    end
-    %disp('before'), state
-    state = SubBytes(state, 16);
-    state = ShiftRows(state);
+%     state = reshape(state, 1, 16);
+%     %state
+%     switch i
+%         case 1
+%             RK = RoundKey1;
+%         case 2
+%             RK = RoundKey2;
+%         case 3
+%             RK = RoundKey3;
+%         case 4
+%             RK = RoundKey4;
+%         case 5
+%             RK = RoundKey5;
+%         case 6
+%             RK = RoundKey6;
+%         case 7
+%             RK = RoundKey7;
+%         case 8
+%             RK = RoundKey8;
+%         case 9
+%             RK = RoundKey9;
+%         case 10
+%             RK = RoundKey10;
+%         otherwise
+%             break;
+%     end
+%     %disp('before'), state
+%     state = SubBytes(state, 16);
+%     state = ShiftRows(state);
     
-    %state
-    if(i == 10)
-         %state = MixColumns(state);
-         disp('Last round, RK: '), RK
-         state = bitxor(state, RK);
-         disp('Your ciphertext: '), state
-    else
-         state = MixColumns(state);
-         state = bitxor(state, RK);
-    end
+%     %state
+%     if(i == 10)
+%          %state = MixColumns(state);
+%          disp('Last round, RK: '), RK
+%          state = bitxor(state, RK);
+%          disp('Your ciphertext: '), state
+%     else
+%          state = MixColumns(state);
+%          state = bitxor(state, RK);
+%     end
 
-end
+% end
 
 %state = MixColumns(state);
 
